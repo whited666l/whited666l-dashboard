@@ -1,101 +1,91 @@
-# WhiteD666l - Crypto Signal Web App (Streamlit)
+// WhiteD666l Platform – TradingView-style React Interface
 
-import streamlit as st
-import pandas as pd
-from pycoingecko import CoinGeckoAPI
-from ta.momentum import RSIIndicator
-from ta.trend import MACD
-from datetime import datetime
+import React from "react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Search, BarChart2, Settings } from "lucide-react";
+import { motion } from "framer-motion";
 
-# Initialize CoinGecko
-cg = CoinGeckoAPI()
+export default function WhiteD666lApp() {
+  return (
+    <main className="bg-black text-white min-h-screen flex flex-col">
+      {/* Top Navigation Bar wrapped in Tabs */}
+      <Tabs defaultValue="spot">
+        <div className="flex justify-between items-center p-4 bg-gray-900 shadow-md">
+          <h1 className="text-2xl font-bold">WhiteD666l</h1>
+          <TabsList className="space-x-2">
+            <TabsTrigger value="spot">Spot</TabsTrigger>
+            <TabsTrigger value="futures">Futures</TabsTrigger>
+            <TabsTrigger value="defi">DeFi</TabsTrigger>
+            <TabsTrigger value="nft">NFT</TabsTrigger>
+            <TabsTrigger value="ai">AI Signals</TabsTrigger>
+          </TabsList>
+          <Button variant="ghost"><Settings size={20} /></Button>
+        </div>
+      </Tabs>
 
-# --- Fetch all coins ---
-all_coins = cg.get_coins_list()
-coin_names = sorted([coin['id'] for coin in all_coins])
+      {/* Chart and Tools Panel */}
+      <div className="grid grid-cols-5 gap-4 p-4">
+        {/* Sidebar */}
+        <div className="col-span-1 space-y-4">
+          <Input placeholder="Search coins..." icon={<Search />} className="bg-gray-800" />
+          <Card>
+            <CardContent>
+              <h2 className="font-semibold mb-2">Watchlist</h2>
+              <ul className="space-y-1 text-sm">
+                <li>BTC/USDT</li>
+                <li>ETH/USDT</li>
+                <li>SOL/USDT</li>
+              </ul>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent>
+              <h2 className="font-semibold mb-2">Alerts</h2>
+              <ul className="text-sm text-red-400">
+                <li>BTC RSI {"<"} 30</li>
+                <li>ETH MACD Bullish</li>
+              </ul>
+            </CardContent>
+          </Card>
+        </div>
 
-# --- Sidebar ---
-st.set_page_config(page_title="WhiteD666l", layout="wide", initial_sidebar_state="expanded")
-st.sidebar.title("⚙️ Settings")
-coin = st.sidebar.selectbox("Choose a Coin", coin_names, index=coin_names.index("bitcoin"))
-theme = st.sidebar.radio("Theme", ["Dark", "Light"])
-invest_amount = st.sidebar.number_input("Your Investment ($)", min_value=1.0, value=10.0, step=1.0)
+        {/* Main Chart View */}
+        <div className="col-span-4 space-y-4">
+          <Card className="bg-gray-800 h-[500px] flex justify-center items-center">
+            <BarChart2 size={48} className="opacity-50" />
+            <p className="ml-4">[Chart Placeholder: TradingView embed or chart.js]</p>
+          </Card>
 
-# --- Styling ---
-if theme == "Dark":
-    st.markdown("""
-        <style>
-            body {
-                background-color: #111;
-                color: #ddd;
-            }
-            .stApp {
-                background-color: #111;
-                color: #ddd;
-            }
-        </style>
-    """, unsafe_allow_html=True)
+          <Tabs defaultValue="rsi">
+            <TabsList className="bg-gray-900">
+              <TabsTrigger value="rsi">RSI</TabsTrigger>
+              <TabsTrigger value="macd">MACD</TabsTrigger>
+              <TabsTrigger value="ema">EMA</TabsTrigger>
+              <TabsTrigger value="volume">Volume</TabsTrigger>
+            </TabsList>
+            <TabsContent value="rsi">
+              <Card><CardContent>RSI Indicator Data...</CardContent></Card>
+            </TabsContent>
+            <TabsContent value="macd">
+              <Card><CardContent>MACD Indicator Data...</CardContent></Card>
+            </TabsContent>
+            <TabsContent value="ema">
+              <Card><CardContent>EMA Indicator Data...</CardContent></Card>
+            </TabsContent>
+            <TabsContent value="volume">
+              <Card><CardContent>Volume Indicator Data...</CardContent></Card>
+            </TabsContent>
+          </Tabs>
+        </div>
+      </div>
 
-# --- Main ---
-st.title(f"📈 WhiteD666l - {coin.upper()} Signal Analysis")
-
-try:
-    # --- Fetch Data ---
-    data = cg.get_coin_market_chart_by_id(id=coin, vs_currency='usd', days='30')
-    prices = data['prices']
-    df = pd.DataFrame(prices, columns=['timestamp', 'price'])
-    df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
-
-    # --- Indicators ---
-    df['rsi'] = RSIIndicator(close=df['price'], window=14).rsi()
-    macd = MACD(close=df['price'])
-    df['macd'] = macd.macd()
-    df['macd_signal'] = macd.macd_signal()
-
-    latest = df.iloc[-1]
-    price = latest['price']
-    rsi = latest['rsi']
-    macd_val = latest['macd']
-    macd_signal = latest['macd_signal']
-
-    # --- Signal Logic ---
-    if rsi < 30 and macd_val > macd_signal:
-        signal = "🟢 STRONG BUY"
-    elif rsi > 70 and macd_val < macd_signal:
-        signal = "🔴 STRONG SELL"
-    else:
-        signal = "🟡 NEUTRAL / HOLD"
-
-    # --- Display Output ---
-    st.metric("Current Price (USD)", f"${price:,.2f}")
-    st.metric("RSI (14)", f"{rsi:.2f}")
-    st.metric("MACD", f"{macd_val:.2f}")
-    st.metric("Signal Line", f"{macd_signal:.2f}")
-    st.subheader("📌 Final Signal:")
-    st.success(signal if "BUY" in signal else signal if "NEUTRAL" in signal else signal)
-
-    # --- Investment Advice ---
-    st.subheader("💰 Investment Advice")
-    if "BUY" in signal:
-        entry_price = price
-        take_profit = entry_price * 1.05
-        stop_loss = entry_price * 0.95
-        st.write(f"- **Entry:** ${entry_price:,.2f}")
-        st.write(f"- **Target (5% Gain):** ${take_profit:,.2f}")
-        st.write(f"- **Stop Loss (5% Risk):** ${stop_loss:,.2f}")
-        potential_profit = invest_amount * 0.05
-        st.write(f"- **Potential Profit:** ${potential_profit:.2f}")
-    else:
-        st.info("No safe entry point right now. Please wait.")
-
-    # --- Chart ---
-    st.subheader("📉 Price Chart (Last 30 Days)")
-    st.line_chart(df.set_index("timestamp")["price"])
-
-except Exception as e:
-    st.error("Failed to fetch or process data. Please try another coin or try again later.")
-    st.exception(e)
-
-# --- Footer ---
-st.markdown("---")
-st.markdown("Made with ❤️ for Amal | WhiteD666l.ai")
+      {/* Footer */}
+      <footer className="bg-gray-900 p-4 text-center text-xs text-gray-500">
+        © 2025 WhiteD666l – All rights reserved. No personal data stored.
+      </footer>
+    </main>
+  );
+}
